@@ -1,0 +1,29 @@
+{
+  "dependencies": {
+    "@types/node": "^17.0.18",
+    "express": "^4.17.3",
+    "inquirer": "^8.2.0",
+    "mysql2": "^2.3.3",
+    "ts-loader": "^9.2.6",
+    "typescript": "^4.5.5"
+  },
+  "name": "sql-employee-tracker",
+  "description": "",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "start":"cd dist && node server.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Pattiqus/sql-employee-tracker.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Pattiqus/sql-employee-tracker/issues"
+  },
+  "homepage": "https://github.com/Pattiqus/sql-employee-tracker#readme"
+}
