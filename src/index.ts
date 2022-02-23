@@ -1,3 +1,4 @@
+import Connection from "mysql2/typings/mysql/lib/Connection";
 import { updateSourceFile } from "typescript";
 
 // # Import: Node Modules
@@ -20,11 +21,11 @@ const login = mysql.createConnection(
 );
 
 /**
- * Function: Main Menu
+ * Function: initMainMenu
  * Description: Main application menu
  */
 
-const init = () => {
+const initMainMenu = () => {
     // # Inquirer: Uses Inquirer to add choices to the users terminal
     inquirer.prompt([
         {
@@ -53,6 +54,9 @@ const init = () => {
                 break
             case "View all roles":
                 viewRoles()
+                break
+            case "View all employees":
+                viewEmployees()
                 break
             case "Add a department":
                 addDepartment()
@@ -85,3 +89,96 @@ const init = () => {
     });
 };
 
+// # Display : departments
+const viewDepartments = () => {
+    // # Query: SQL database for departments
+    let sql = `SELECT department.id AS ID,
+    department.name AS Deparment
+    FROM department;`;
+
+    // # Retreive: retreive data from SQL database
+    login.query(sql, (err, data) => {
+        if (err) throw err;
+        console.table(data);
+        // # Return: to main menu
+        
+        initMainMenu();
+
+    });
+};
+
+// # Display : roles
+const viewRoles = () => {
+
+    // # Query: SQL database for departments
+    let sql = `SELECT role.id AS ID,
+    role.title AS Title
+    FROM role;`;
+
+    // # Retreive: retreive data from SQL database
+    login.query(sql, (err, data) => {
+        if (err) throw err;
+        console.table(data);
+
+        // # Return: to main menu 
+        initMainMenu();
+
+    });
+};
+
+// # Display : roles
+const viewEmployees = () => {
+
+    // # Query: SQL database for departments
+    let sql = `SELECT employee.id AS ID,
+    CONCAT (employee.first_name, " ",employee.last_name) AS fullName,
+    role.title AS Title,
+    department.name AS Department,
+    role.salary AS Salary,
+    CONCAT (manager.first_name, " ", manager.last_name) AS Manager
+    FROM employee
+    LEFT JOIN role ON employee.role_id = role.id
+    LEFT JOIN department ON role.department_id = department.id
+    LEFT JOIN employee manager ON employee.manager.id = manager.id;`;
+
+    // # Retreive: retreive data from SQL database
+    login.query(sql, (err, data) => {
+        if (err) throw err;
+        console.table(data);
+
+        // # Return: to main menu
+        initMainMenu();
+
+    });
+};
+
+/**
+ * Function: addDepartment
+ * Description: prompts user with inquirer again with additional questions to add a department
+ */
+const addDepartment = () => {
+    inquirer.prompt([
+        {
+            type: "input",
+            name: "name",
+            message: "Enter name of new department",
+            validate: input => {
+                if (input) {
+                    return true;
+                } else {
+                    console.log("Enter department name");
+                    return false;
+                }
+            }
+        }
+    ]).then((data) => {
+        let departmentName = data.name;
+        let sql = `INSERT INTO department (name) VALUES (?);`;
+
+        login.query(sql, departmentName, (err, data) => {
+            if (err) throw err;
+            console.log('Department succesfully added');
+            viewDepartments();
+        });
+    });
+};
