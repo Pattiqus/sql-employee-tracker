@@ -10,7 +10,7 @@ const consoleTable = require("console.table");
 require("dotenv").config();
 
 // # Connect: To SQL database using .env file
-const login = mysql.createConnection(
+const accessDb = mysql.createConnection(
     {
         host: 'localhost',
         user: process.env.DB_USER,
@@ -83,7 +83,7 @@ const initMainMenu = () => {
                 viewDeptBudget()
                 break
             case "Exit application":
-                return login.end()
+                return accessDb.end()
             
         };
     });
@@ -92,12 +92,12 @@ const initMainMenu = () => {
 // # Display : departments
 const viewDepartments = () => {
     // # Query: SQL database for departments
-    let sql = `SELECT department.id AS ID,
+    let sqlPush = `SELECT department.id AS ID,
     department.name AS Deparment
     FROM department;`;
 
     // # Retreive: retreive data from SQL database
-    login.query(sql, (err, data) => {
+    accessDb.query(sqlPush, (err, data) => {
         if (err) throw err;
         console.table(data);
         // # Return: to main menu
@@ -111,12 +111,12 @@ const viewDepartments = () => {
 const viewRoles = () => {
 
     // # Query: SQL database for departments
-    let sql = `SELECT role.id AS ID,
+    let sqlPush = `SELECT role.id AS ID,
     role.title AS Title
     FROM role;`;
 
     // # Retreive: retreive data from SQL database
-    login.query(sql, (err, data) => {
+    accessDb.query(sqlPush, (err, data) => {
         if (err) throw err;
         console.table(data);
 
@@ -130,7 +130,7 @@ const viewRoles = () => {
 const viewEmployees = () => {
 
     // # Query: SQL database for departments
-    let sql = `SELECT employee.id AS ID,
+    let sqlPush = `SELECT employee.id AS ID,
     CONCAT (employee.first_name, " ",employee.last_name) AS fullName,
     role.title AS Title,
     department.name AS Department,
@@ -142,7 +142,7 @@ const viewEmployees = () => {
     LEFT JOIN employee manager ON employee.manager.id = manager.id;`;
 
     // # Retreive: retreive data from SQL database
-    login.query(sql, (err, data) => {
+    accessDb.query(sqlPush, (err, data) => {
         if (err) throw err;
         console.table(data);
 
@@ -173,12 +173,172 @@ const addDepartment = () => {
         }
     ]).then((data) => {
         let departmentName = data.name;
-        let sql = `INSERT INTO department (name) VALUES (?);`;
+        let sqlPush = `INSERT INTO department (name) VALUES (?);`;
 
-        login.query(sql, departmentName, (err, data) => {
+        accessDb.query(sqlPush, departmentName, (err, data) => {
             if (err) throw err;
             console.log('Department succesfully added');
             viewDepartments();
+        });
+    });
+};
+
+/**
+ * Function: addRole
+ * Description: prompts user with inquirer again with additional questions to add a new employee to the database
+ */
+const addRole = () => {
+    inquirer.prompt([
+        {
+            type: "input",
+            name: "title",
+            message: "Please enter the title of the new role",
+            validate: input => {
+                if (input) {
+                    return true;
+                } else {
+                    console.log("Please enter the title of the new role");
+                    return false;
+                }
+            }
+        },
+        {
+            type: "input",
+            name: "salary",
+            message: "Please enter the salary of the new role",
+            validate: input => {
+                if (input) {
+                    if (isNaN(input)) {
+                        console.log("Please enter a numerical value");
+                        return false
+                    }
+                    return true
+                } else {
+                    console.log("Please enter the salary of the new role")
+                    return false
+                }
+            }
+        }
+    ]).then((data) => {
+        // # Declare: details requred to be added to SQL
+        let roleDetails = [data.title, data.salary, data.department_id];
+        // # Get: current departments from database
+        let depSelectSql = `SELECT name, id FROM department;`;
+
+        accessDb.query(depSelectSql, (err, data) => {
+            if (err) throw err;
+            // # Read: data from SQL to give choices to user on what department the new role should sit in
+            let currentDepartments = data.map(({ name, id, }) => ({ name: name, value: id}));
+
+            inquirer.prompt([
+                {
+                    type: "list",
+                    name: "department_id",
+                    message: "Which department does this role belong to?",
+                    choices: currentDepartments
+                }
+            ]).then((data) => {
+                let departmentId = data.department_id;
+                roleDetails.push(departmentId);
+                let sqlPush = `INSERT INTO role (title, salary, department_id) VALUES (?, ?, ?);`;
+
+                accessDb.query(sqlPush, roleDetails, (err, rows) => {
+                    if (err) throw err;
+                    console.log("Role succesfully added");
+                    viewRoles();
+                });
+            });
+
+        });
+    });
+};
+
+/**
+ * Function: addEmployee
+ * Description: propmts user with inquirer to gather data and add new employee to database
+ */
+const addEmployee = () => {
+    inquirer.prompt([
+        {
+            type: "input",
+            name: "first_name",
+            message: "Please enter the first name of new employee",
+            validate: input => {
+                if (input) {
+                    return true;
+                } else {
+                    console.log("Please enter the first name of the new employee");
+                    return false;
+                }
+            }
+        },
+        {
+            type: "input",
+            name: "last_name",
+            message: "Please enter the last name of the new employee ",
+            validate: input => {
+                if (input) {
+                    return true;
+                } else {
+                    console.log("Please enter the last name of the new employee");
+                    return false;
+                }
+            }
+        },
+    ]).then((data) => {
+        let newEmployeeData = [data.first_name, data.last_name];
+        let roleSelectSql = `SELECT * FROM role;`;
+
+        accessDb.query(roleSelectSql, (err, data) => {
+            if (err) throw err;
+            let currentRoles = data.map(({ title, id }) => ({ name: title, value: id}));
+            inquirer.prompt([
+                {
+                    type: "list",
+                    name: "role_id",
+                    message: "Please enter the new employee's role",
+                    choices: currentRoles
+                }
+            ]).then((data) => {
+                let role = data.role_id;
+                newEmployeeData.push(role);
+
+                let managerSelectSql = `SELECT e.manager_id, CONCAT(m.first_name, ' ',m.last_name)
+                AS manager
+                FROM employee e
+                LEFT JOIN role r
+                ON e.role_id - r.id
+                LEFT JOIN employee m
+                ON m.id = e.manager_id GROUP BY e.manager_id;`;
+
+                accessDb.query(managerSelectSql, (err, data) => {
+                    if (err) throw err;
+                    let manager = data.map(({ manager, manager_id}) => ({
+                        name: manager,
+                        value: manager_id,
+                    }));
+                    inquirer.prompt([
+                        {
+                            type: "list",
+                            name: "manager_id",
+                            message: "Who does the employee report to?",
+                            choices: manager
+                        }
+                    ]).then((data) => {
+                        let managerId = data.manager_id
+                        newEmployeeData.push(managerId);
+
+                        let sqlPush = `INSERT INTO employee (first_name, last_name, role_id, manager_id)
+                        VALUES (?, ?, ?, ?)`;
+
+                        accessDb.query(sqlPush, newEmployeeData, (err, data) => {
+                            if (err) throw err;
+                            console.log(`Employee successfully added to database`);
+                            viewEmployees();
+                        });
+                    });
+                });
+            });
         });
     });
 };
