@@ -39,6 +39,9 @@ const initMainMenu = () => {
                     "Add a role",
                     "Add an employee",
                     "Update an employee role",
+                    "Update an employee's manager",
+                    "View employees by manager",
+                    "View employees by department",
                     "Delete a role",
                     "Delete a department",
                     "Delete am employee",
@@ -68,7 +71,16 @@ const initMainMenu = () => {
                 addEmployee()
                 break
             case "Update an employee role":
-                updateRole()
+                updateEmployeeRole()
+                break
+            case "Update an employee's manager":
+                updateEmployeeManager()
+                break
+            case "View employees by manager":
+                viewEmployeesByManager()
+                break
+            case "View employees by department":
+                viewEmployeesByDepartment()
                 break
             case "Delete a role":
                 deleteRole()
@@ -84,7 +96,6 @@ const initMainMenu = () => {
                 break
             case "Exit application":
                 return accessDb.end()
-            
         };
     });
 };
@@ -342,3 +353,95 @@ const addEmployee = () => {
         });
     });
 };
+
+/**
+ * Function: updateEmployeeRole
+ * Description: Updates the role of an employee currently in the database
+ */
+const updateEmployeeRole = () => {
+    let currentEmployeesSql = `SELECT * FROM employee;`;
+
+    accessDb.query(currentEmployeesSql, (err, data) => {
+        if (err) throw err;
+        let currrentEmployees = data.map(({ id, first_name, last_name}) => ({
+            name: first_name + " " + last_name,
+            value: id,
+        }));
+        inquirer.prompt([
+            {
+                type: "list",
+                name: "name",
+                message: "Which employee would you like to update?",
+                choices: currrentEmployees
+            }
+        ]).then((data) => {
+            let employeeToUpdate = data.name;
+            let employeeDetails = [];
+            employeeDetails.push(employeeToUpdate);
+            let currentRoleSql = `SELECT * FROM role;`;
+
+            accessDb.query(currentRoleSql, (err, data) => {
+                if (err) throw err;
+                let currentRoles = data.map(({ title, id}) => ({ name: title, value: id}));
+                inquirer.prompt([
+                    {
+                        type: "list",
+                        name: "role",
+                        message: "Which role is the Employee now undertaking?",
+                        choices: currentRoles
+                    }
+                ]).then((data) => {
+                    let updatedRole = data.role;
+                    // # Update: Employee details with updated role
+                    employeeDetails.unshift(updatedRole);
+
+                    let sqlPush = `UPDATE employee SET role_id = ? WHERE id = ?;`;
+
+                    accessDb.query(sqlPush, employeeDetails, (err, data) => {
+                        if (err) throw err;
+                        console.log("Employee updated")
+                        viewEmployees();
+                    });
+                });
+            });
+        });
+    });
+};
+
+/**
+ * Function: updateEmployeeManager
+ * Description: updates an employees manager
+ */
+const updateEmployeeManager = () => {
+    let currentEmployeesSql = `SELECT * FROM employee;`;
+
+    accessDb.query(currentEmployeesSql, (err, data) => {
+        if (err) throw err;
+        let currrentEmployees = data.map(({ id, first_name, last_name }) => ({
+            name: first_name + " " + last_name,
+            value: id,
+        }));
+        inquirer.prompt([
+            {
+                type: "list",
+                name: "name",
+                message: "Which employee would you like to update?",
+                choices: currrentEmployees
+            }
+        ]).then(data => {
+            let employeeToUpdate = data.name;
+            let employeeDetails = [];
+            employeeDetails.push(employeeToUpdate);
+            let currentManagersSql = `SELECT * FROM employee;`;
+
+            accessDb.query(currentManagersSql, (err, data) => {
+                if (err) throw err;
+                let eligableManagers = data.map(({ id, first_name, last_name}) => ({
+                    name: first_name + " " + last_name,
+                    value: id,
+                }));
+
+            })
+        })
+    })
+}
