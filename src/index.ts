@@ -532,3 +532,114 @@ const viewEmployeesByDepartment = () => {
     });
 };
 
+/**
+ * Function: deleteDepartment
+ * Description: Delete a department from the database
+ */
+const deleteDepartment = () => {
+    let departmentSqlGet = `SELECT * FROM department;`;
+
+    accessDb.query(departmentSqlGet, (err, data) => {
+        if (err) throw err;
+        let currentDepartments = data.map(({ name, id}) => ({ name: name, value: id}));
+        inquirer.prompt([
+            {
+                type: "list",
+                name: "department",
+                message: "Which department do you want to remove",
+                choices: currentDepartments
+
+            }
+        ]).then(data => {
+            let department = data.department;
+            let sqlRemove = `DELETE FROM department WHERE id = ?;`;
+
+            accessDb.query(sqlRemove, department, (err, data) => {
+                if (err) throw err;
+                console.log("Department succesfully removed");
+                viewDepartments();
+            });
+        });
+    });
+};
+
+/**
+ * Function: deleteRole
+ * Description: Delete a role from the database
+ */
+const deleteRole = () => {
+    let roleSqlGet = `SELECT * FROM role;`;
+
+    accessDb.query(roleSqlGet, (err, data) => {
+        if (err) throw err;
+        let currentRoles = data.map(({ name, id}) => ({ name: name, value: id}));
+        inquirer.prompt([
+            {
+                type: "list",
+                name: "role",
+                message: "Which role do you want to remove",
+                choices: currentRoles
+
+            }
+        ]).then(data => {
+            let role = data.role;
+            let sqlRemove = `DELETE FROM role WHERE id = ?;`;
+
+            accessDb.query(sqlRemove, role, (err, data) => {
+                if (err) throw err;
+                console.log("Role succesfully removed");
+                viewRoles();
+            });
+        });
+    });
+};
+
+/**
+ * Function: deleteRole
+ * Description: Delete a role from the database
+ */
+const deleteEmployee = () => {
+    let employeeSqlGet = `SELECT * FROM employee;`;
+
+    accessDb.query(employeeSqlGet, (err, data) => {
+        if (err) throw err;
+        let currentEmployees = data.map(({ name, id}) => ({ name: name, value: id}));
+        inquirer.prompt([
+            {
+                type: "list",
+                name: "employee",
+                message: "Which employee do you want to remove",
+                choices: currentEmployees
+
+            }
+        ]).then(data => {
+            let employee = data.employee;
+            let sqlRemove = `DELETE FROM employee WHERE id = ?;`;
+
+            accessDb.query(sqlRemove, employee, (err, data) => {
+                if (err) throw err;
+                console.log("Employee succesfully removed");
+                viewEmployees();
+            });
+        });
+    });
+};
+
+/**
+ * Function: viewDeptBudget
+ * Description: view the sum of the salaries of all employees within a department
+ */
+const viewDeptBudget = () => {
+    let sqlBudgetGet = `SELECT department_id AS ID,
+    department.name AS department,
+    SUM(salary) AS Budget
+    FROM role
+    JOIN department ON role.department_id = department.id GROUP BY department_id;`;
+
+    accessDb.query(sqlBudgetGet, (err, data) => {
+        if (err) throw err;
+        console.table(data);
+        initMainMenu();
+    });
+};
+
