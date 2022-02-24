@@ -440,8 +440,95 @@ const updateEmployeeManager = () => {
                     name: first_name + " " + last_name,
                     value: id,
                 }));
+                inquirer.prompt([
+                    {
+                        type: "list",
+                        name: "newManager",
+                        message: "Who does the employee now report to?",
+                        choices: eligableManagers
+                    }
+                ]).then((data) => {
+                    let newManager = data.newManager;
+                    employeeDetails.push(newManager);
 
-            })
-        })
-    })
-}
+                    let updatedEmployee = employeeDetails[0]
+                    employeeDetails[0] = newManager
+                    employeeDetails[1] = updatedEmployee
+
+                    let sqlPush = `UPDATE employee SET manager_id = ? WHERE id = ?`;
+
+                    accessDb.query(sqlPush, employeeDetails, (err, data) => {
+                        if (err) throw err;
+                        console.log("Employee profile has been succesfully updated");
+                        viewEmployees
+                    });
+                });
+            });
+        });
+    });
+};
+
+/**
+ * Function: viewEmployeesByManager
+ * Description: View all employees based on which manager they report to
+ */
+const viewEmployeesByManager = () => {
+    let currentManagersSql = `SELECT e.manager_id, CONCAT(m.first_name, ' ', m.last_name) 
+    AS manager FROM employee e LEFT JOIN role r
+    ON e.role_id = r.id
+    LEFT JOIN department d
+    ON d.id = r.department_id
+    LEFT JOIN employee m
+    ON m.id = e.manager_id GROUP BY e.manager_id;`;
+
+    accessDb.query(currentManagersSql, (err, data) => {
+        if (err) throw err;
+        let currentManagers = data.map(({ manager_id, manager }) => ({
+            value: manager_id,
+            name: manager,
+        }));
+        inquirer.prompt([
+            {
+                type: "list",
+                name: "managers",
+                Message: "Which managers team would you like to view?",
+                choices: currentManagers
+            }
+        ]).then((data) => {
+            let managerTeams = [data.managers]
+            let sqlGet = `SELECT e.id, e.first_name, e.last_name, r.title,
+            CONCAT(m.first_name, ' ', m.last_name) AS manager
+            FROM employee e
+            JOIN role r
+            ON e.role_id = r.id
+            JOIN department_id
+            ON m.id = e.manager_id
+            WHERE m.id = ?;`; 
+
+            accessDb.query(sqlGet, managerTeams, (err, data) => {
+                if (err) throw err;
+                console.table(data);
+                initMainMenu();
+            });
+        });
+    });
+};
+
+/**
+ * Function: viewEmployeeByDepartment
+ * Description: View employees based on which department they are working in
+ */
+const viewEmployeesByDepartment = () => {
+    let employeeByDeptSql = `SELECT CONCAT(first_name, " ", last_name) AS name,
+    department.name AS Department
+    FROM employee
+    LEFT JOIN role ON employee.role_id = role.id
+    LEFT JOIN department ON role.department_id = department.id;`;
+
+    accessDb.query(employeeByDeptSql, (err, data) => {
+        if (err) throw err;
+        console.table(data);
+        initMainMenu();
+    });
+};
+
