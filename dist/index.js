@@ -600,3 +600,4 @@ var viewDeptBudget = function () {
         initMainMenu();
     });
 };
+initMainMenu();

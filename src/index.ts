@@ -643,3 +643,4 @@ const viewDeptBudget = () => {
     });
 };
 
+initMainMenu();
