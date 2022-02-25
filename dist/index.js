@@ -43,7 +43,7 @@ var initMainMenu = function () {
     ])
         // # Switch Statement: calls appropriate function based on user choice
         .then(function (data) {
-        switch (data.choice) {
+        switch (data.mainMenu) {
             case "View all departments":
                 viewDepartments();
                 break;
@@ -95,7 +95,7 @@ var initMainMenu = function () {
 // # Display : departments
 var viewDepartments = function () {
     // # Query: SQL database for departments
-    var sqlPush = "SELECT department.id AS ID,\n    department.name AS Deparment\n    FROM department;";
+    var sqlPush = "SELECT department.id AS ID,\n    department.name AS Deparment\n    FROM department";
     // # Retreive: retreive data from SQL database
     accessDb.query(sqlPush, function (err, data) {
         if (err)

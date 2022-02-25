@@ -51,7 +51,7 @@ const initMainMenu = () => {
     ])
     // # Switch Statement: calls appropriate function based on user choice
     .then((data) => {
-        switch (data.choice) {
+        switch (data.mainMenu) {
             case "View all departments":
                 viewDepartments()
                 break
@@ -105,7 +105,7 @@ const viewDepartments = () => {
     // # Query: SQL database for departments
     let sqlPush = `SELECT department.id AS ID,
     department.name AS Deparment
-    FROM department;`;
+    FROM department`;
 
     // # Retreive: retreive data from SQL database
     accessDb.query(sqlPush, (err, data) => {
