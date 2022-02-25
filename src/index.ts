@@ -104,7 +104,7 @@ const initMainMenu = () => {
 const viewDepartments = () => {
     // # Query: SQL database for departments
     let sqlPush = `SELECT department.id AS ID,
-    department.name AS Deparment
+    department.name AS Department
     FROM department`;
 
     // # Retreive: retreive data from SQL database
@@ -122,10 +122,14 @@ const viewDepartments = () => {
 const viewRoles = () => {
 
     // # Query: SQL database for departments
-    let sqlPush = `SELECT role.id AS ID,
-    role.title AS Title
-    FROM role;`;
-
+    let sqlPush = "SELECT \
+                        `role`.`id` as `ID`, \
+                        `role`.`title` as `Title`, \
+                        `role`.`salary` as `Salary`, \
+                        `department`.`name` as `Department Name` \
+                    FROM `role` \
+                        LEFT JOIN `department` ON `department`.`id`=`role`.`department_id`;";
+                        
     // # Retreive: retreive data from SQL database
     accessDb.query(sqlPush, (err, data) => {
         if (err) throw err;
@@ -142,7 +146,7 @@ const viewEmployees = () => {
 
     // # Query: SQL database for departments
     let sqlPush = `SELECT employee.id AS ID,
-    CONCAT (employee.first_name, " ",employee.last_name) AS fullName,
+    CONCAT (employee.first_name, " ",employee.last_name) AS Name,
     role.title AS Title,
     department.name AS Department,
     role.salary AS Salary,
@@ -150,7 +154,7 @@ const viewEmployees = () => {
     FROM employee
     LEFT JOIN role ON employee.role_id = role.id
     LEFT JOIN department ON role.department_id = department.id
-    LEFT JOIN employee manager ON employee.manager.id = manager.id;`;
+    LEFT JOIN employee manager ON employee.manager_id = manager.id;`;
 
     // # Retreive: retreive data from SQL database
     accessDb.query(sqlPush, (err, data) => {
@@ -232,7 +236,7 @@ const addRole = () => {
         }
     ]).then((data) => {
         // # Declare: details requred to be added to SQL
-        let roleDetails = [data.title, data.salary, data.department_id];
+        let roleDetails = [data.title, data.salary];
         // # Get: current departments from database
         let depSelectSql = `SELECT name, id FROM department;`;
 
@@ -240,7 +244,6 @@ const addRole = () => {
             if (err) throw err;
             // # Read: data from SQL to give choices to user on what department the new role should sit in
             let currentDepartments = data.map(({ name, id, }) => ({ name: name, value: id}));
-
             inquirer.prompt([
                 {
                     type: "list",
@@ -460,7 +463,7 @@ const updateEmployeeManager = () => {
                     accessDb.query(sqlPush, employeeDetails, (err, data) => {
                         if (err) throw err;
                         console.log("Employee profile has been succesfully updated");
-                        viewEmployees
+                        viewEmployees();
                     });
                 });
             });
@@ -473,13 +476,23 @@ const updateEmployeeManager = () => {
  * Description: View all employees based on which manager they report to
  */
 const viewEmployeesByManager = () => {
-    let currentManagersSql = `SELECT e.manager_id, CONCAT(m.first_name, ' ', m.last_name) 
-    AS manager FROM employee e LEFT JOIN role r
-    ON e.role_id = r.id
-    LEFT JOIN department d
-    ON d.id = r.department_id
-    LEFT JOIN employee m
-    ON m.id = e.manager_id GROUP BY e.manager_id;`;
+    // let currentManagersSql = `SELECT e.manager_id, CONCAT(m.first_name, ' ', m.last_name) 
+    // AS manager FROM employee e LEFT JOIN role r
+    // ON e.role_id = r.id
+    // LEFT JOIN department d
+    // ON d.id = r.department_id
+    // LEFT JOIN employee m
+    // ON m.id = e.manager_id GROUP BY e.manager_id;`;
+    let currentManagersSql = 
+    "SELECT  \
+        `employee`.`id` as `manager_id`, \
+        CONCAT (`employee`.`first_name`, ' ', `employee`.`last_name`) as `manager` \
+    FROM `employee` \
+    WHERE `employee`.`id` IN \
+        (SELECT \
+            `employee`.`manager_id` \
+        FROM `employee` \
+            WHERE `manager_id` IS NOT NULL);";
 
     accessDb.query(currentManagersSql, (err, data) => {
         if (err) throw err;
@@ -496,14 +509,14 @@ const viewEmployeesByManager = () => {
             }
         ]).then((data) => {
             let managerTeams = [data.managers]
-            let sqlGet = `SELECT e.id, e.first_name, e.last_name, r.title,
-            CONCAT(m.first_name, ' ', m.last_name) AS manager
-            FROM employee e
-            JOIN role r
-            ON e.role_id = r.id
-            JOIN department_id
-            ON m.id = e.manager_id
-            WHERE m.id = ?;`; 
+            let sqlGet = 
+            "SELECT  \
+                `employee`.`id` as `ID`, \
+                CONCAT( `employee`.`first_name`, ' ', `employee`.`last_name` ) as `Name`, \
+                `role`.`title` as `Role` \
+            FROM `employee` \
+                INNER JOIN `role` ON `role`.`id`=`employee`.`role_id` \
+            WHERE `employee`.`manager_id` = ?"; 
 
             accessDb.query(sqlGet, managerTeams, (err, data) => {
                 if (err) throw err;
@@ -519,16 +532,51 @@ const viewEmployeesByManager = () => {
  * Description: View employees based on which department they are working in
  */
 const viewEmployeesByDepartment = () => {
-    let employeeByDeptSql = `SELECT CONCAT(first_name, " ", last_name) AS name,
-    department.name AS Department
-    FROM employee
-    LEFT JOIN role ON employee.role_id = role.id
-    LEFT JOIN department ON role.department_id = department.id;`;
 
+
+    let employeeByDeptSql = 
+    "SELECT \
+        `id` as `department_id`,\
+        `name` as `department` \
+    FROM `department`;";
+    
     accessDb.query(employeeByDeptSql, (err, data) => {
         if (err) throw err;
-        console.table(data);
-        initMainMenu();
+
+        let currentDepartments = data.map(({ department_id, department }) => ({
+            value: department_id,
+            name: department,
+        }));
+
+        inquirer.prompt([
+            {
+                type: "list",
+                name: "department",
+                Message: "Which department would you like to see employees for?",
+                choices: currentDepartments
+            }
+        ]).then((data) => {
+            let chosenDepartment = [data.department];
+
+            let sqlGet = 
+            "SELECT \
+                `employee`.`id` as `ID`, \
+                CONCAT( `employee`.`first_name`, ' ', `employee`.`last_name` ) as `Name`, \
+                `role`.`title` as `Role` \
+            FROM `employee` \
+                INNER JOIN `role` on `role`.`id` = `employee`.`role_id` \
+            WHERE `role_id` IN \
+                ( SELECT \
+                    `role`.`id` as `role_id` \
+                FROM `role` \
+                    WHERE `role`.`department_id` = ? )"; 
+
+            accessDb.query(sqlGet, chosenDepartment, (err, data) => {
+                if (err) throw err;
+                console.table(data);
+                initMainMenu();
+            });
+        });
     });
 };
 
@@ -572,7 +620,7 @@ const deleteRole = () => {
 
     accessDb.query(roleSqlGet, (err, data) => {
         if (err) throw err;
-        let currentRoles = data.map(({ name, id}) => ({ name: name, value: id}));
+        let currentRoles = data.map(({ title, id}) => ({ name: title, value: id}));
         inquirer.prompt([
             {
                 type: "list",
@@ -603,7 +651,7 @@ const deleteEmployee = () => {
 
     accessDb.query(employeeSqlGet, (err, data) => {
         if (err) throw err;
-        let currentEmployees = data.map(({ name, id}) => ({ name: name, value: id}));
+        let currentEmployees = data.map(({id, first_name, last_name}) => ({ name: first_name + " " + last_name, value: id,}));
         inquirer.prompt([
             {
                 type: "list",

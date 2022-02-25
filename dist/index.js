@@ -95,7 +95,7 @@ var initMainMenu = function () {
 // # Display : departments
 var viewDepartments = function () {
     // # Query: SQL database for departments
-    var sqlPush = "SELECT department.id AS ID,\n    department.name AS Deparment\n    FROM department";
+    var sqlPush = "SELECT department.id AS ID,\n    department.name AS Department\n    FROM department";
     // # Retreive: retreive data from SQL database
     accessDb.query(sqlPush, function (err, data) {
         if (err)
@@ -108,7 +108,13 @@ var viewDepartments = function () {
 // # Display : roles
 var viewRoles = function () {
     // # Query: SQL database for departments
-    var sqlPush = "SELECT role.id AS ID,\n    role.title AS Title\n    FROM role;";
+    var sqlPush = "SELECT \
+                        `role`.`id` as `ID`, \
+                        `role`.`title` as `Title`, \
+                        `role`.`salary` as `Salary`, \
+                        `department`.`name` as `Department Name` \
+                    FROM `role` \
+                        LEFT JOIN `department` ON `department`.`id`=`role`.`department_id`;";
     // # Retreive: retreive data from SQL database
     accessDb.query(sqlPush, function (err, data) {
         if (err)
@@ -121,7 +127,7 @@ var viewRoles = function () {
 // # Display : roles
 var viewEmployees = function () {
     // # Query: SQL database for departments
-    var sqlPush = "SELECT employee.id AS ID,\n    CONCAT (employee.first_name, \" \",employee.last_name) AS fullName,\n    role.title AS Title,\n    department.name AS Department,\n    role.salary AS Salary,\n    CONCAT (manager.first_name, \" \", manager.last_name) AS Manager\n    FROM employee\n    LEFT JOIN role ON employee.role_id = role.id\n    LEFT JOIN department ON role.department_id = department.id\n    LEFT JOIN employee manager ON employee.manager.id = manager.id;";
+    var sqlPush = "SELECT employee.id AS ID,\n    CONCAT (employee.first_name, \" \",employee.last_name) AS Name,\n    role.title AS Title,\n    department.name AS Department,\n    role.salary AS Salary,\n    CONCAT (manager.first_name, \" \", manager.last_name) AS Manager\n    FROM employee\n    LEFT JOIN role ON employee.role_id = role.id\n    LEFT JOIN department ON role.department_id = department.id\n    LEFT JOIN employee manager ON employee.manager_id = manager.id;";
     // # Retreive: retreive data from SQL database
     accessDb.query(sqlPush, function (err, data) {
         if (err)
@@ -202,7 +208,7 @@ var addRole = function () {
         }
     ]).then(function (data) {
         // # Declare: details requred to be added to SQL
-        var roleDetails = [data.title, data.salary, data.department_id];
+        var roleDetails = [data.title, data.salary];
         // # Get: current departments from database
         var depSelectSql = "SELECT name, id FROM department;";
         accessDb.query(depSelectSql, function (err, data) {
@@ -436,7 +442,7 @@ var updateEmployeeManager = function () {
                         if (err)
                             throw err;
                         console.log("Employee profile has been succesfully updated");
-                        viewEmployees;
+                        viewEmployees();
                     });
                 });
             });
@@ -448,7 +454,22 @@ var updateEmployeeManager = function () {
  * Description: View all employees based on which manager they report to
  */
 var viewEmployeesByManager = function () {
-    var currentManagersSql = "SELECT e.manager_id, CONCAT(m.first_name, ' ', m.last_name) \n    AS manager FROM employee e LEFT JOIN role r\n    ON e.role_id = r.id\n    LEFT JOIN department d\n    ON d.id = r.department_id\n    LEFT JOIN employee m\n    ON m.id = e.manager_id GROUP BY e.manager_id;";
+    // let currentManagersSql = `SELECT e.manager_id, CONCAT(m.first_name, ' ', m.last_name) 
+    // AS manager FROM employee e LEFT JOIN role r
+    // ON e.role_id = r.id
+    // LEFT JOIN department d
+    // ON d.id = r.department_id
+    // LEFT JOIN employee m
+    // ON m.id = e.manager_id GROUP BY e.manager_id;`;
+    var currentManagersSql = "SELECT  \
+        `employee`.`id` as `manager_id`, \
+        CONCAT (`employee`.`first_name`, ' ', `employee`.`last_name`) as `manager` \
+    FROM `employee` \
+    WHERE `employee`.`id` IN \
+        (SELECT \
+            `employee`.`manager_id` \
+        FROM `employee` \
+            WHERE `manager_id` IS NOT NULL);";
     accessDb.query(currentManagersSql, function (err, data) {
         if (err)
             throw err;
@@ -468,7 +489,13 @@ var viewEmployeesByManager = function () {
             }
         ]).then(function (data) {
             var managerTeams = [data.managers];
-            var sqlGet = "SELECT e.id, e.first_name, e.last_name, r.title,\n            CONCAT(m.first_name, ' ', m.last_name) AS manager\n            FROM employee e\n            JOIN role r\n            ON e.role_id = r.id\n            JOIN department_id\n            ON m.id = e.manager_id\n            WHERE m.id = ?;";
+            var sqlGet = "SELECT  \
+                `employee`.`id` as `ID`, \
+                CONCAT( `employee`.`first_name`, ' ', `employee`.`last_name` ) as `Name`, \
+                `role`.`title` as `Role` \
+            FROM `employee` \
+                INNER JOIN `role` ON `role`.`id`=`employee`.`role_id` \
+            WHERE `employee`.`manager_id` = ?";
             accessDb.query(sqlGet, managerTeams, function (err, data) {
                 if (err)
                     throw err;
@@ -483,12 +510,47 @@ var viewEmployeesByManager = function () {
  * Description: View employees based on which department they are working in
  */
 var viewEmployeesByDepartment = function () {
-    var employeeByDeptSql = "SELECT CONCAT(first_name, \" \", last_name) AS name,\n    department.name AS Department\n    FROM employee\n    LEFT JOIN role ON employee.role_id = role.id\n    LEFT JOIN department ON role.department_id = department.id;";
+    var employeeByDeptSql = "SELECT \
+        `id` as `department_id`,\
+        `name` as `department` \
+    FROM `department`;";
     accessDb.query(employeeByDeptSql, function (err, data) {
         if (err)
             throw err;
-        console.table(data);
-        initMainMenu();
+        var currentDepartments = data.map(function (_a) {
+            var department_id = _a.department_id, department = _a.department;
+            return ({
+                value: department_id,
+                name: department,
+            });
+        });
+        inquirer.prompt([
+            {
+                type: "list",
+                name: "department",
+                Message: "Which department would you like to see employees for?",
+                choices: currentDepartments
+            }
+        ]).then(function (data) {
+            var chosenDepartment = [data.department];
+            var sqlGet = "SELECT \
+                `employee`.`id` as `ID`, \
+                CONCAT( `employee`.`first_name`, ' ', `employee`.`last_name` ) as `Name`, \
+                `role`.`title` as `Role` \
+            FROM `employee` \
+                INNER JOIN `role` on `role`.`id` = `employee`.`role_id` \
+            WHERE `role_id` IN \
+                ( SELECT \
+                    `role`.`id` as `role_id` \
+                FROM `role` \
+                    WHERE `role`.`department_id` = ? )";
+            accessDb.query(sqlGet, chosenDepartment, function (err, data) {
+                if (err)
+                    throw err;
+                console.table(data);
+                initMainMenu();
+            });
+        });
     });
 };
 /**
@@ -533,8 +595,8 @@ var deleteRole = function () {
         if (err)
             throw err;
         var currentRoles = data.map(function (_a) {
-            var name = _a.name, id = _a.id;
-            return ({ name: name, value: id });
+            var title = _a.title, id = _a.id;
+            return ({ name: title, value: id });
         });
         inquirer.prompt([
             {
@@ -565,8 +627,8 @@ var deleteEmployee = function () {
         if (err)
             throw err;
         var currentEmployees = data.map(function (_a) {
-            var name = _a.name, id = _a.id;
-            return ({ name: name, value: id });
+            var id = _a.id, first_name = _a.first_name, last_name = _a.last_name;
+            return ({ name: first_name + " " + last_name, value: id, });
         });
         inquirer.prompt([
             {
