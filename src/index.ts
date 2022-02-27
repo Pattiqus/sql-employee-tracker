@@ -45,7 +45,7 @@ const initMainMenu = () => {
                     "Delete a role",
                     "Delete a department",
                     "Delete am employee",
-                    "View total utilized budget of a department",
+                    "View total utilized budget of all department",
                     "Exit application"],
         },
     ])
